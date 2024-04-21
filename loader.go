@@ -10,9 +10,6 @@ type OperationData struct {
 	Data []Operation `json:"data"`
 }
 
-// Function -> to dump in the collection
-
-// Could be later used for reading file and returning object
 // Loading database to the inmemory
 func ReadFileAndReturnObject(uuid string) (*OperationData, error) {
 	filename := getFileName(uuid)
