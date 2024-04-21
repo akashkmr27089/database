@@ -14,7 +14,7 @@ type OperationData struct {
 
 // Could be later used for reading file and returning object
 // Loading database to the inmemory
-func readFileAndReturnObject(uuid string) (*OperationData, error) {
+func ReadFileAndReturnObject(uuid string) (*OperationData, error) {
 	filename := getFileName(uuid)
 	existingData, err := os.ReadFile(filename)
 	if err != nil {

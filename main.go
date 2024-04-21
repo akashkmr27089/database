@@ -23,6 +23,7 @@ type Collection struct {
 	keys           []string
 	Operations     []Operation
 	flushCounter   int8
+	isPreload      bool
 }
 
 func (c *Collection) incrementFlashCounter(operation Operation) {
@@ -48,24 +49,57 @@ func (c *Collection) incrementFlashCounter(operation Operation) {
 	}
 }
 
+func (c *Collection) PreloadCollection(uuid string) (bool, error) {
+	objectCollection, err := ReadFileAndReturnObject(uuid)
+	if err != nil {
+		return false, err
+	}
+
+	commands := objectCollection.Data
+	if len(commands) == 0 {
+		return false, nil
+	}
+
+	for _, command := range commands {
+		switch command.Name {
+		case InsertOneOperationName:
+			c.InsertOne(*command.Key, *command.Value)
+		case UpdateOneOperationName:
+			c.UpdateOne(*command.Key, *command.Value)
+		case DeleteOneOperationName:
+			c.DeleteOne(*command.Key)
+		}
+	}
+
+	c.isPreload = false
+	return true, nil
+}
+
 func (c *Collection) Create(name string, updateStrategy *UpdateStrategy, preUuid *string) {
 	if updateStrategy == nil {
 		c.updateStrategy = BatchUpdateStrategy
 	}
 	c.name = name
+	c.Documents = make(map[string]string, 0)
 	if preUuid != nil {
 		c.uuid = *preUuid
+
+		// Run the Preload logic -->
+		c.isPreload = true
+		_, err := c.PreloadCollection(*preUuid)
+		if err != nil {
+			return
+		}
 	} else {
 		c.uuid = uuid.New().String()
-	}
-	c.Documents = make(map[string]string, 0)
 
-	// Add Element in the Operation Array
-	operation := Operation{
-		Name:  CreateCollectionOperationName,
-		Value: &name,
+		// Add Element in the Operation Array
+		operation := Operation{
+			Name:  CreateCollectionOperationName,
+			Value: &name,
+		}
+		c.incrementFlashCounter(operation)
 	}
-	c.incrementFlashCounter(operation)
 }
 
 func (c *Collection) Close() {
@@ -78,16 +112,18 @@ func (c *Collection) InsertOne(key string, value string) bool {
 	var isInserted bool = false
 	if !ok {
 		c.Documents[key] = value
-		c.clearkeyList()
 		isInserted = true
 
 		// Add Element in the Operation Array
-		operation := Operation{
-			Name:  InsertOneOperationName,
-			Key:   &key,
-			Value: &value,
+		if !c.isPreload {
+			c.clearkeyList()
+			operation := Operation{
+				Name:  InsertOneOperationName,
+				Key:   &key,
+				Value: &value,
+			}
+			c.incrementFlashCounter(operation)
 		}
-		c.incrementFlashCounter(operation)
 	}
 
 	return isInserted
@@ -98,16 +134,18 @@ func (c *Collection) UpdateOne(key string, value string) bool {
 	var isUpdated bool = false
 	if ok {
 		c.Documents[key] = value
-		c.clearkeyList()
 		isUpdated = true
 
 		// Add Element in the Operation Array
-		operation := Operation{
-			Name:  UpdateOneOperationName,
-			Key:   &key,
-			Value: &value,
+		if !c.isPreload {
+			c.clearkeyList()
+			operation := Operation{
+				Name:  UpdateOneOperationName,
+				Key:   &key,
+				Value: &value,
+			}
+			c.incrementFlashCounter(operation)
 		}
-		c.incrementFlashCounter(operation)
 	}
 
 	return isUpdated
@@ -118,15 +156,17 @@ func (c *Collection) DeleteOne(key string) bool {
 	var isDeleted bool = false
 	if !ok {
 		delete(c.Documents, key)
-		c.clearkeyList()
 		isDeleted = true
 
 		// Add Element in the Operation Array
-		operation := Operation{
-			Name: DeleteOneOperationName,
-			Key:  &key,
+		if !c.isPreload {
+			c.clearkeyList()
+			operation := Operation{
+				Name: DeleteOneOperationName,
+				Key:  &key,
+			}
+			c.incrementFlashCounter(operation)
 		}
-		c.incrementFlashCounter(operation)
 	}
 
 	return isDeleted
@@ -190,7 +230,7 @@ func main() {
 	uuid := "4a13d3ab-ebda-4d76-aebb-b7a0f7ce2bbb"
 	c.Create("Test", nil, &uuid)
 
-	c.InsertOne("test", "val")
+	c.InsertOne("test332", "val")
 	c.InsertOne("test1", "val")
 	c.InsertOne("test12", "val2")
 	c.InsertOne("test3", "val34")
