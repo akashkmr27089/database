@@ -25,25 +25,17 @@ type Collection struct {
 	flushCounter   int8
 }
 
-func sendElementToSecondaryStorage(uuidString string, operation []Operation) {
-	// TODO: Yet to implement
-	fmt.Printf("%s-%v", uuidString, operation)
-
-	// Could be used for Logging in the database --> Event based
-	// Basic event based logging --> Upon getting request, keep appending it into
-	// upon starting, load the json into main maemory
-}
-
 func (c *Collection) incrementFlashCounter(operation Operation) {
 	if c.updateStrategy == BatchUpdateStrategy {
 		c.flushCounter += 1
 		if operation.Name == CreateCollectionOperationName {
-			sendElementToSecondaryStorage(c.uuid, c.Operations)
+			AppendOperationsIntoFileBasedOnUuid(c.uuid, []Operation{operation})
 			return
 		}
 		if c.flushCounter%RESET_COUNTER_CONSTANT == 0 {
 			// This will send all the new updates to Database
-			sendElementToSecondaryStorage(c.uuid, c.Operations)
+			c.Operations = append(c.Operations, operation)
+			AppendOperationsIntoFileBasedOnUuid(c.uuid, c.Operations)
 
 			// Reset all the update variables
 			c.Operations = []Operation{}
@@ -52,16 +44,20 @@ func (c *Collection) incrementFlashCounter(operation Operation) {
 			c.Operations = append(c.Operations, operation)
 		}
 	} else if c.updateStrategy == IncrementalUpdateStrategy {
-		sendElementToSecondaryStorage(c.uuid, []Operation{operation})
+		AppendOperationsIntoFileBasedOnUuid(c.uuid, []Operation{operation})
 	}
 }
 
-func (c *Collection) Create(name string, updateStrategy *UpdateStrategy) {
+func (c *Collection) Create(name string, updateStrategy *UpdateStrategy, preUuid *string) {
 	if updateStrategy == nil {
 		c.updateStrategy = BatchUpdateStrategy
 	}
 	c.name = name
-	c.uuid = uuid.New().String()
+	if preUuid != nil {
+		c.uuid = *preUuid
+	} else {
+		c.uuid = uuid.New().String()
+	}
 	c.Documents = make(map[string]string, 0)
 
 	// Add Element in the Operation Array
@@ -70,6 +66,10 @@ func (c *Collection) Create(name string, updateStrategy *UpdateStrategy) {
 		Value: &name,
 	}
 	c.incrementFlashCounter(operation)
+}
+
+func (c *Collection) Close() {
+	AppendOperationsIntoFileBasedOnUuid(c.uuid, c.Operations)
 }
 
 // Note that the validation for key and value must be done beforehand
@@ -186,7 +186,9 @@ func (c *Collection) GetKeysByParitialByRegex(regexKey string) []string {
 func main() {
 	// If the file exists --> Load the Data to the collections
 	var c Collection
-	c.Create("Test", nil)
+	// loadPrexistingData()
+	uuid := "4a13d3ab-ebda-4d76-aebb-b7a0f7ce2bbb"
+	c.Create("Test", nil, &uuid)
 
 	c.InsertOne("test", "val")
 	c.InsertOne("test1", "val")
@@ -201,6 +203,8 @@ func main() {
 	for _, value := range values {
 		fmt.Println(value)
 	}
+
+	c.Close()
 
 	// FushallToDatabase --> For fushing all the data to Persistant Database
 

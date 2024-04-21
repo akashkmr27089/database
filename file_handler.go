@@ -69,23 +69,23 @@ func main2() {
 	fmt.Println("Data has been appended to persons.json")
 }
 
-// Could be later used for reading file and returning object
-// Loading database to the inmemory
-func readFileAndReturnObject(fileName string) {
-	existingData, err := os.ReadFile(fileName)
-	if err != nil {
-		fmt.Println("Error reading existing JSON file:", err)
-		return
-	}
+// // Could be later used for reading file and returning object
+// // Loading database to the inmemory
+// func readFileAndReturnObject(fileName string) {
+// 	existingData, err := os.ReadFile(fileName)
+// 	if err != nil {
+// 		fmt.Println("Error reading existing JSON file:", err)
+// 		return
+// 	}
 
-	if existingData != nil {
-		val := fmt.Sprintf("{\"data\":["+"%s"+"]}", existingData)
-		existingData2 := []byte(val)
+// 	if existingData != nil {
+// 		val := fmt.Sprintf("{\"data\":["+"%s"+"]}", existingData)
+// 		existingData2 := []byte(val)
 
-		var existingPersons Data
-		if err := json.Unmarshal(existingData2, &existingPersons); err != nil {
-			fmt.Println("Error decoding existing JSON:", err)
-			return
-		}
-	}
-}
+// 		var existingPersons Data
+// 		if err := json.Unmarshal(existingData2, &existingPersons); err != nil {
+// 			fmt.Println("Error decoding existing JSON:", err)
+// 			return
+// 		}
+// 	}
+// }
