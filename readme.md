@@ -24,8 +24,11 @@
 # Task 
 Create Basic CRUD operation (Done)
 Create Batch and incremental flush Basic Structure (Done)
-Crate Machanism for writing data to file --> Secodary Storage
+Crate Machanism for writing data to file --> Secodary Storage (Done)
+Load and upload data from secondary storage to main memory and vice versa (Done)
 Make serach more capable --> implement trie algorithm for searching a key 
+
+
 1. Create a basic structure to store data in structure and store it as a file
 2. A parser to understand the file and reach to a specific part of the file 
 3. For starter work on key value pair. This will be synced directly
