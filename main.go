@@ -24,6 +24,7 @@ type Collection struct {
 	Operations     []Operation
 	flushCounter   int8
 	isPreload      bool
+	trieSearch     *Trie
 }
 
 func (c *Collection) incrementFlashCounter(operation Operation) {
@@ -76,6 +77,7 @@ func (c *Collection) PreloadCollection(uuid string) (bool, error) {
 }
 
 func (c *Collection) Create(name string, updateStrategy *UpdateStrategy, preUuid *string) {
+	c.trieSearch = NewTrie()
 	if updateStrategy == nil {
 		c.updateStrategy = BatchUpdateStrategy
 	}
@@ -113,6 +115,7 @@ func (c *Collection) InsertOne(key string, value string) bool {
 	if !ok {
 		c.Documents[key] = value
 		isInserted = true
+		c.trieSearch.Insert(key, value)
 
 		// Add Element in the Operation Array
 		if !c.isPreload {
@@ -135,6 +138,7 @@ func (c *Collection) UpdateOne(key string, value string) bool {
 	if ok {
 		c.Documents[key] = value
 		isUpdated = true
+		c.trieSearch.Update(key, value)
 
 		// Add Element in the Operation Array
 		if !c.isPreload {
@@ -157,6 +161,7 @@ func (c *Collection) DeleteOne(key string) bool {
 	if !ok {
 		delete(c.Documents, key)
 		isDeleted = true
+		c.trieSearch.Delete(key)
 
 		// Add Element in the Operation Array
 		if !c.isPreload {
@@ -227,14 +232,14 @@ func main() {
 	// If the file exists --> Load the Data to the collections
 	var c Collection
 	// loadPrexistingData()
-	uuid := "4a13d3ab-ebda-4d76-aebb-b7a0f7ce2bbb"
+	uuid := "c18ddbcf-6d63-483f-bc53-25dcaedf89bd"
 	c.Create("Test", nil, &uuid)
 
 	c.InsertOne("test332", "val")
 	c.InsertOne("test1", "val")
 	c.InsertOne("test12", "val2")
 	c.InsertOne("test3", "val34")
-	c.InsertOne("test3", "val")
+	c.UpdateOne("test3", "val232233")
 	c.InsertOne("test13", "val")
 	c.InsertOne("test123", "val2")
 	c.InsertOne("test33", "val34")
@@ -244,6 +249,8 @@ func main() {
 		fmt.Println(value)
 	}
 
+	g := c.trieSearch.SearchPartial("test3")
+	fmt.Print(g)
 	c.Close()
 
 	// FushallToDatabase --> For fushing all the data to Persistant Database
